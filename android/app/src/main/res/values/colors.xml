@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- CAMERA language (MANTRA_MANIFEST modules/language-camera.md): colour is the state channel -->
+    <color name="bg">#15181B</color>
+    <color name="green">#33D17A</color>
+    <color name="icon_bg">#9A6400</color>
+</resources>

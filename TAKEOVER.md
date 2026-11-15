@@ -49,7 +49,14 @@ Android app names it (`chromium-vm`) to the Tailscale app, which looks it up in 
 
 ## Status
 
-- 15.11.2026 v1: VM exit node advertised; apps written; see LESSONS.md and the session report for the run links.
+- 15.11.2026 v1: release https://github.com/markoboskoauroville/MANTRA_VPN/releases/tag/v1 (Latest; app.zip 0.7 MB +
+  1-mantra-vpn-v1.apk 22 MB). Runs green: Mac app https://github.com/markoboskoauroville/MANTRA_VPN/actions/runs/43676423685,
+  Android https://github.com/markoboskoauroville/MANTRA_VPN/actions/runs/43676423596. Mac: installed, signed "Mantra Apps",
+  window seen (DIRECT lit, Croatian IP, Tailscale CONNECTED, exit node "none offered" = not yet approved); all eight
+  controls are AX buttons named by their word. Pixel 7 + Nothing: v1 installed by adb (not opened: live stream on the
+  Pixel). Emulator: UI seen in portrait.
+- Open: chromium-vm must be approved as exit node in the Tailscale admin console; then run `tools/test_exit.sh`.
+- v2: no focus ring on ON at launch (`.focusable(false)` on the words).
 
 ## Next
 

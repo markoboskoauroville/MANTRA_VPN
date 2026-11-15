@@ -63,3 +63,10 @@ Android app names it (`chromium-vm`) to the Tailscale app, which looks it up in 
 - A row in the star (STAR_SWIFT rows.json + icons6/icons.json key `vpn`, VPN/FRA, Mac tools) when the star is not being
   changed by another session.
 - Optional: menu-bar icon; an editable exit-node name on Android if a second exit node ever exists.
+- 15.11.2026 v2 (Mac + Android, release v2 Latest; runs green: Mac https://github.com/markoboskoauroville/MANTRA_VPN/actions/runs/43698355498,
+  Android https://github.com/markoboskoauroville/MANTRA_VPN/actions/runs/43698355497): bug "always DIRECT" fixed. Cause: Tailscale.app's one binary
+  is the GUI unless `TAILSCALE_BE_CLI=1` (or a terminal environment) is set; started from the GUI app it printed "The Tailscale GUI failed to start"
+  and the window showed NOT RUNNING / none offered. Now every CLI call runs with TAILSCALE_BE_CLI=1, stdin /dev/null; the exit node in use is read
+  from `ExitNodeStatus.ID` (Tailscale 1.104); the lit word is FRANKFURT when the exit node is in use OR the public IP is Oracle / DE. Log:
+  `~/Library/Logs/VPN (Mantra).log`. Verified on the Mac: FRANKFURT lit, CONNECTED, chromium-vm IN USE; DIRECT pressed -> Zagreb, Telemach;
+  FRANKFURT pressed -> Frankfurt, Oracle; left on FRANKFURT. AX: the buttons have no names in v2 either (button 6 = FRANKFURT, 7 = DIRECT in group 1).

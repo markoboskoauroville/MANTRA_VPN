@@ -11,3 +11,7 @@
    chain (jumped from FORWARD) accepts tailnet traffic and ts-postrouting masquerades it. Nothing to add by hand.
 5. **One release for two platforms**: the Mac and Android workflows upload into the same vN, so both updaters (which read
    the Latest tag) stay in step; one shared concurrency group stops the two runs from racing on `gh release create`.
+6. **Tailscale.app's binary is the GUI unless told to be the CLI** (15.11.2026). From a Terminal it works (TERM is set); launched by a GUI app (empty
+   environment) it says "The Tailscale GUI failed to start". Always set `TAILSCALE_BE_CLI=1` when an app runs it. Reproduce with `env -i PATH=/usr/bin:/bin
+   /Applications/Tailscale.app/Contents/MacOS/Tailscale status --json`. A test from a shell that inherits the environment proves nothing.
+7. **Tailscale 1.104 names the exit node in use in `ExitNodeStatus.ID`** (matches the peer's `ID`); do not rely only on `Peer.ExitNode`.

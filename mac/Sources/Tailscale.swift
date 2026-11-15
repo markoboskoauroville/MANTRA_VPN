@@ -48,7 +48,12 @@ final class VPN: ObservableObject {
     var cli: String? { VPN.cliPaths.first { FileManager.default.isExecutableFile(atPath: $0) } }
 
     var running: Bool { backend == "Running" }
-    var isFrankfurt: Bool { activeExit != nil }
+    /// Honest lit word: the exit node is in use, or the world already sees the Frankfurt VM (Oracle / Germany).
+    var isFrankfurt: Bool {
+        if activeExit != nil { return true }
+        let o = pub.org.lowercased()
+        return o.contains("oracle") || pub.country == "DE"
+    }
 
     func start() {
         refreshStatus()
@@ -70,11 +75,13 @@ final class VPN: ObservableObject {
             var backend = "", best: ExitPeer? = nil, active: ExitPeer? = nil
             if let j = try? JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any] {
                 backend = j["BackendState"] as? String ?? ""
+                // Tailscale 1.104: the exit node in use is named in ExitNodeStatus.ID (peer "ID"), not only Peer.ExitNode
+                let usedID = (j["ExitNodeStatus"] as? [String: Any])?["ID"] as? String
                 var options: [ExitPeer] = []
                 for (_, v) in (j["Peer"] as? [String: Any]) ?? [:] {
                     guard let p = v as? [String: Any] else { continue }
                     let offers = p["ExitNodeOption"] as? Bool ?? false
-                    let using = p["ExitNode"] as? Bool ?? false
+                    let using = (p["ExitNode"] as? Bool ?? false) || (usedID != nil && p["ID"] as? String == usedID)
                     guard offers || using else { continue }
                     let ips = p["TailscaleIPs"] as? [String] ?? []
                     let peer = ExitPeer(name: p["HostName"] as? String ?? "?",
@@ -84,11 +91,13 @@ final class VPN: ObservableObject {
                     if using { active = peer }
                 }
                 best = active ?? options.first(where: { $0.name == VPN.preferred }) ?? options.sorted(by: { $0.name < $1.name }).first
-            } else if code != 0 {
+            } else {
+                VPN.log("status unreadable (exit \(code)): \(out.prefix(300))")
                 backend = out.lowercased().contains("not running") || out.lowercased().contains("failed to connect") ? "Stopped" : ""
             }
             DispatchQueue.main.async {
                 self.cliFound = true
+                if self.backend != backend { VPN.log("backend \(self.backend) -> \(backend), exit node \(active?.name ?? "none")") }
                 self.backend = backend
                 self.exitNode = best
                 self.activeExit = active
@@ -110,6 +119,7 @@ final class VPN: ObservableObject {
         busy = "FRANKFURT"; message = ""
         q.async { [weak self] in
             let (code, out) = VPN.run(cli, ["set", "--exit-node=\(node.ip)", "--exit-node-allow-lan-access=true"])
+            VPN.log("FRANKFURT set exit \(code): \(out.prefix(200))")
             DispatchQueue.main.async {
                 self?.busy = ""
                 self?.message = code == 0 ? "" : VPN.short(out)
@@ -123,6 +133,7 @@ final class VPN: ObservableObject {
         busy = "DIRECT"; message = ""
         q.async { [weak self] in
             let (code, out) = VPN.run(cli, ["set", "--exit-node="])
+            VPN.log("DIRECT set exit \(code): \(out.prefix(200))")
             DispatchQueue.main.async {
                 self?.busy = ""
                 self?.message = code == 0 ? "" : VPN.short(out)
@@ -168,6 +179,15 @@ final class VPN: ObservableObject {
 
     // MARK: helpers
 
+    /// ~/Library/Logs/VPN (Mantra).log
+    static func log(_ s: String) {
+        let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/VPN (Mantra).log")
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        let line = "\(f.string(from: Date())) v\(VERSION) \(s)\n"
+        if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }
+        else { try? line.write(to: url, atomically: true, encoding: .utf8) }
+    }
+
     static func short(_ s: String) -> String {
         let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
         return t.isEmpty ? "Tailscale refused the change." : String(t.prefix(300))
@@ -178,6 +198,13 @@ final class VPN: ObservableObject {
         let p = Process(), out = Pipe()
         p.executableURL = URL(fileURLWithPath: exe)
         p.arguments = args
+        // The cause of "always DIRECT" (v1): Tailscale.app's one binary is the GUI unless TAILSCALE_BE_CLI is set or a
+        // terminal environment is present; launched from a GUI app it answered "The Tailscale GUI failed to start".
+        var env = ProcessInfo.processInfo.environment
+        env["TAILSCALE_BE_CLI"] = "1"
+        env["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/homebrew/bin"
+        p.environment = env
+        p.standardInput = FileHandle.nullDevice
         p.standardOutput = out
         p.standardError = out
         do { try p.run() } catch { return (-1, "\(error)") }
